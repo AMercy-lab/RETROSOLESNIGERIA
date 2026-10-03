@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Bebas_Neue, Geist, Geist_Mono } from "next/font/google";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import CartToast from "@/components/cart/CartToast";
 import { getCategoryGroups } from "@/lib/catalog/queries";
 import "./globals.css";
 
@@ -55,6 +56,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <Header categoryGroups={categoryGroups} />
         <main className="flex-1">{children}</main>
         <Footer categoryGroups={categoryGroups} />
+        <CartToast />
       </body>
     </html>
   );

@@ -38,4 +38,5 @@ export type Product = {
   category: Category; // the most specific category, e.g. Sneakers
   group: Category | null; // its top-level category, e.g. Shoes
   image?: string; // main photo URL, if one is set
+  images: string[]; // all photos in display order (the main photo first); may be empty
 };

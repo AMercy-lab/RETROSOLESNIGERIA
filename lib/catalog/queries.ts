@@ -98,7 +98,11 @@ function toProduct(row: ProductRow, groups: CategoryGroup[]): Product | null {
   // Products in a hidden (inactive) category are not shown.
   if (!category) return null;
 
-  const mainImage = [...row.product_images].sort((a, b) => a.sort_order - b.sort_order)[0];
+  // Uploaded photos (in display order) take priority over the temporary demo photo.
+  const uploaded = [...row.product_images]
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((img) => storageImageUrl(img.storage_path));
+  const images = uploaded.length > 0 ? uploaded : demoProductImages[row.slug] ? [demoProductImages[row.slug]] : [];
 
   return {
     id: row.id,
@@ -114,7 +118,8 @@ function toProduct(row: ProductRow, groups: CategoryGroup[]): Product | null {
     keywords: row.keywords,
     category,
     group,
-    image: mainImage ? storageImageUrl(mainImage.storage_path) : demoProductImages[row.slug],
+    image: images[0],
+    images,
   };
 }
 
@@ -133,6 +138,11 @@ export const getProducts = cache(async (): Promise<Product[]> => {
   if (result.error) throw new Error(`Could not load products: ${result.error.message}`);
 
   return result.data.map((row) => toProduct(row, groups)).filter((p): p is Product => p !== null);
+});
+
+// One active product by its slug (web-address name), or null if there is none.
+export const getProductBySlug = cache(async (slug: string): Promise<Product | null> => {
+  return (await getProducts()).find((p) => p.slug === slug) ?? null;
 });
 
 // Specific products, in the order the slugs are given (missing ones are skipped).

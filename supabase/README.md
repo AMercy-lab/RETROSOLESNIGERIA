@@ -13,6 +13,7 @@ tables, security rules and storage buckets in your Supabase project.
 | `migrations/20261003120300_initial_store_data.sql` | The real categories and the store-settings row |
 | `migrations/20261004090000_product_availability_and_sizes.sql` | One availability status per product, and optional sizes |
 | `migrations/20261005090000_checkout_foundations.sql` | Checkout rules: RSN confirmation (3 h) and payment (1 h) deadlines, confirmations, partly-unavailable orders, guest orders, payment checks |
+| `migrations/20261006090000_checkout_corrections.sql` | Every order needs RSN confirmation; stricter new-order, confirmation and payment protections; late Paystack payments recorded; customer cancellation; flat delivery fee removed |
 | `seed.sql` | OPTIONAL temporary sample products for testing |
 
 ## Applying them (first time)

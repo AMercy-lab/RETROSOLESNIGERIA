@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Logo from "@/components/Logo";
-import { BagIcon, ChevronDownIcon, MenuIcon, SearchIcon, UserIcon } from "@/components/icons";
+import CartLink from "@/components/cart/CartLink";
+import { ChevronDownIcon, MenuIcon, SearchIcon, UserIcon } from "@/components/icons";
 import type { CategoryGroup } from "@/lib/catalog/types";
 import { categoryHref, groupHref } from "@/lib/categories";
 import { site } from "@/lib/site";
@@ -91,7 +92,7 @@ export default function Header({ categoryGroups }: { categoryGroups: CategoryGro
 
           <Logo />
 
-          {/* Icons. Account and cart are placeholders until sign-in and the cart are built. */}
+          {/* Icons. Account is a placeholder until sign-in is built; the cart shows its item count. */}
           <div className="flex items-center justify-end gap-1 sm:gap-2">
             <Link href="/search" aria-label="Search" className="p-2 transition-colors hover:text-brand-red">
               <SearchIcon />
@@ -99,12 +100,7 @@ export default function Header({ categoryGroups }: { categoryGroups: CategoryGro
             <span title="Sign in — coming soon" aria-label="Account (coming soon)" className="hidden cursor-not-allowed p-2 opacity-40 sm:block">
               <UserIcon />
             </span>
-            <span title="Cart — coming soon" aria-label="Cart (coming soon)" className="relative cursor-not-allowed p-2 opacity-40">
-              <BagIcon />
-              <span className="absolute right-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-brand-red text-[10px] font-bold text-white">
-                0
-              </span>
-            </span>
+            <CartLink />
           </div>
         </div>
       </div>
