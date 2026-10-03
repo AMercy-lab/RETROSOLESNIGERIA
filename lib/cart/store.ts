@@ -158,6 +158,11 @@ export function removeLine(key: string) {
   setState({ lines: getSnapshot().lines.filter((line) => lineKey(line) !== key) });
 }
 
+// Empty the cart (after an order has been placed).
+export function clearCart() {
+  setState(EMPTY);
+}
+
 // Replace line details (e.g. refreshed price/name/photo) without changing quantities.
 export function refreshLines(update: (line: CartLine) => CartLine) {
   const current = getSnapshot();
