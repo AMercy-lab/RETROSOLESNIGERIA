@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Countdown from "@/components/admin/Countdown";
+import Countdown from "@/components/Countdown";
 import StageBadge from "@/components/admin/StageBadge";
 import SectionHeading from "@/components/SectionHeading";
 import { TABS, listOrders, type Tab } from "@/lib/admin/orders";

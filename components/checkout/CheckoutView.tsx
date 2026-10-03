@@ -9,7 +9,7 @@ import { formatNaira } from "@/lib/format";
 import { NIGERIAN_STATES } from "@/lib/nigeria";
 import { saveOrder } from "@/lib/orders/saved-orders";
 
-type Placed = { orderNumber: string; confirmationDueAt: string };
+type Placed = { orderId: string; orderNumber: string; confirmationDueAt: string; accessToken: string };
 
 const field =
   "w-full rounded-2xl border border-brand-ink/15 bg-white px-4 py-3.5 text-base outline-none transition-colors focus:border-brand-ink aria-[invalid=true]:border-brand-red";
@@ -73,7 +73,12 @@ export default function CheckoutView() {
         placedAt: new Date().toISOString(),
       });
       clearCart();
-      setPlaced({ orderNumber: data.orderNumber, confirmationDueAt: data.confirmationDueAt });
+      setPlaced({
+        orderId: data.orderId,
+        orderNumber: data.orderNumber,
+        confirmationDueAt: data.confirmationDueAt,
+        accessToken: data.accessToken,
+      });
       window.scrollTo({ top: 0 });
     } catch {
       setError({ message: "We couldn't reach RSN. Please check your connection and try again." });
@@ -114,14 +119,24 @@ export default function CheckoutView() {
           </li>
         </ol>
         <p className="text-sm text-brand-muted">
-          Nothing has been charged. Please keep your order number — it&apos;s also saved on this device.
+          Nothing has been charged. Your order page shows its progress — keep its link private. It&apos;s also saved under
+          &ldquo;My orders&rdquo; on this device.
         </p>
-        <Link
-          href="/search"
-          className="self-start rounded-full bg-brand-red px-8 py-4 text-xs font-semibold uppercase tracking-widest text-white transition-colors hover:bg-brand-red-dark"
-        >
-          Continue shopping
-        </Link>
+        <div className="flex flex-wrap gap-3">
+          <Link
+            href={`/orders/${placed.orderId}?token=${encodeURIComponent(placed.accessToken)}`}
+            className="rounded-full bg-brand-red px-8 py-4 text-xs font-semibold uppercase tracking-widest text-white transition-colors hover:bg-brand-red-dark"
+            data-testid="view-order"
+          >
+            View your order
+          </Link>
+          <Link
+            href="/search"
+            className="rounded-full border border-brand-ink/20 px-8 py-4 text-xs font-semibold uppercase tracking-widest transition-colors hover:border-brand-ink hover:bg-brand-ink hover:text-white"
+          >
+            Continue shopping
+          </Link>
+        </div>
       </div>
     );
   }

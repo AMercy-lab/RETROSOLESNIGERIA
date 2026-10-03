@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import Countdown from "@/components/admin/Countdown";
+import Countdown from "@/components/Countdown";
 import { CancelOrderForm, ConfirmOrderForm, MarkUnavailableForm, ReportUnavailableForm } from "@/components/admin/OrderActions";
 import StageBadge from "@/components/admin/StageBadge";
 import { ArrowLeftIcon } from "@/components/icons";

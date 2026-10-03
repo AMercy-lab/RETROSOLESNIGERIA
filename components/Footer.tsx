@@ -32,6 +32,9 @@ export default function Footer({ categoryGroups }: { categoryGroups: CategoryGro
           <Link href="/search" className="text-sm transition-colors hover:text-brand-red">
             All products
           </Link>
+          <Link href="/orders" className="text-sm transition-colors hover:text-brand-red">
+            My orders
+          </Link>
         </div>
 
         <div className="flex flex-col gap-3">
