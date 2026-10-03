@@ -27,7 +27,7 @@ export async function createClient() {
           }
         } catch {
           // Server components can't set cookies. That's fine: the session is
-          // refreshed by proxy.ts, which will be added in the sign-in stage.
+          // refreshed by proxy.ts (for the admin area) before the page renders.
         }
       },
     },
