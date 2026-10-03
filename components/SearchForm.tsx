@@ -15,14 +15,14 @@ export default function SearchForm({
 }) {
   const box =
     variant === "dark"
-      ? "border-white/20 bg-white/5 text-white placeholder:text-white/50 focus-within:border-white"
-      : "border-brand-black/15 bg-white text-brand-black placeholder:text-brand-muted focus-within:border-brand-black";
+      ? "border-white/20 bg-white/10 text-white placeholder:text-white/50 focus-within:border-white"
+      : "border-brand-ink/15 bg-white text-brand-ink placeholder:text-brand-muted focus-within:border-brand-ink";
 
   return (
-    <form action="/search" role="search" className={`flex w-full items-center border ${box} transition-colors`}>
+    <form action="/search" role="search" className={`flex w-full items-center rounded-full border ${box} transition-colors`}>
       <label className="flex flex-1 items-center">
         <span className="sr-only">Search products</span>
-        <SearchIcon className="ml-4 h-5 w-5 shrink-0 opacity-60" />
+        <SearchIcon className="ml-5 h-5 w-5 shrink-0 opacity-60" />
         <input
           name="q"
           type="search"
@@ -33,7 +33,7 @@ export default function SearchForm({
       </label>
       <button
         type="submit"
-        className="m-1.5 shrink-0 bg-brand-red px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-brand-red-dark"
+        className="m-1.5 shrink-0 rounded-full bg-brand-red px-6 py-3 text-xs font-semibold uppercase tracking-widest text-white transition-colors hover:bg-brand-red-dark"
       >
         Search
       </button>

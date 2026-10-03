@@ -3,8 +3,9 @@ import Link from "next/link";
 import PersonalShopperCTA from "@/components/PersonalShopperCTA";
 import ProductCard from "@/components/ProductCard";
 import SearchForm from "@/components/SearchForm";
+import SectionHeading from "@/components/SectionHeading";
+import { getCategoryGroups, searchProducts } from "@/lib/catalog/queries";
 import { categoryHref, findCategory, findGroup, groupHref } from "@/lib/categories";
-import { searchProducts } from "@/lib/search";
 
 export const metadata: Metadata = {
   title: "Shop",
@@ -31,10 +32,11 @@ export default async function SearchPage({
   const categorySlug = first(params.category);
   const groupSlug = first(params.group);
 
-  const category = categorySlug ? findCategory(categorySlug) : undefined;
-  const group = category?.group ?? (groupSlug ? findGroup(groupSlug) : undefined);
+  const categoryGroups = await getCategoryGroups();
+  const category = categorySlug ? findCategory(categoryGroups, categorySlug) : undefined;
+  const group = category?.group ?? (groupSlug ? findGroup(categoryGroups, groupSlug) : undefined);
 
-  const results = searchProducts({
+  const results = await searchProducts({
     query,
     category: categorySlug,
     group: category ? undefined : groupSlug,
@@ -46,12 +48,9 @@ export default async function SearchPage({
 
   return (
     <>
-      <section className="bg-brand-cream">
+      <section className="bg-brand-mist">
         <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-12 sm:px-6 md:py-16">
-          <p className="text-xs font-bold uppercase tracking-[0.3em] text-brand-red">
-            {group ? group.name : "Shop"}
-          </p>
-          <h1 className="text-4xl font-black uppercase tracking-tight sm:text-5xl">{heading}</h1>
+          <SectionHeading as="h1" eyebrow={group ? group.name : "Shop"} title={heading} />
           <div className="max-w-2xl">
             <SearchForm defaultValue={query} />
           </div>
@@ -61,8 +60,8 @@ export default async function SearchPage({
             <div className="flex flex-wrap gap-2">
               <Link
                 href={groupHref(group.slug)}
-                className={`border px-4 py-2 text-xs font-bold uppercase tracking-widest ${
-                  !category ? "border-brand-black bg-brand-black text-white" : "border-brand-black/15 hover:border-brand-red hover:text-brand-red"
+                className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-widest ${
+                  !category ? "border-brand-ink bg-brand-ink text-white" : "border-brand-ink/15 bg-white hover:border-brand-red hover:text-brand-red"
                 }`}
               >
                 All {group.name}
@@ -71,8 +70,8 @@ export default async function SearchPage({
                 <Link
                   key={c.slug}
                   href={categoryHref(c.slug)}
-                  className={`border px-4 py-2 text-xs font-bold uppercase tracking-widest ${
-                    c.slug === categorySlug ? "border-brand-black bg-brand-black text-white" : "border-brand-black/15 hover:border-brand-red hover:text-brand-red"
+                  className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-widest ${
+                    c.slug === categorySlug ? "border-brand-ink bg-brand-ink text-white" : "border-brand-ink/15 bg-white hover:border-brand-red hover:text-brand-red"
                   }`}
                 >
                   {c.name}

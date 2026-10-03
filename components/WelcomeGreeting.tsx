@@ -7,15 +7,16 @@ import { site } from "@/lib/site";
 
   Right now nobody can sign in, so pages pass firstName={null}.
   When Google sign-in is added, we will pass the customer's real first name.
+  It takes its colour from the area around it.
 */
 export default function WelcomeGreeting({ firstName }: { firstName?: string | null }) {
   const rest = `welcome to ${site.shortName}, where shopping is made easy.`;
 
   return (
-    <p className="text-sm text-white/70 sm:text-base">
+    <p className="text-sm sm:text-base">
       {firstName ? (
         <>
-          Hi <span className="font-bold text-white">{firstName}</span>, {rest}
+          Hi <span className="font-bold">{firstName}</span>, {rest}
         </>
       ) : (
         <>Welcome to {site.shortName}, where shopping is made easy.</>

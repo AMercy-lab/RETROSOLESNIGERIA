@@ -1,74 +1,28 @@
-/*
-  The store's categories, grouped into collections.
+import type { Category, CategoryGroup } from "@/lib/catalog/types";
 
-  To add a category: add a { name, slug } line to a group's list.
-  To add a whole new collection: copy one group block and edit it.
-  A "slug" is the short, web-address-friendly version of a name,
-  e.g. "Corporate Shirts" -> "corporate-shirts". Every slug must be unique.
+/*
+  Helpers for working with the category list.
+  The categories themselves now live in the Supabase "categories" table
+  (loaded by getCategoryGroups() in lib/catalog/queries.ts).
 */
 
-export type Category = {
-  name: string;
-  slug: string;
-};
-
-export type CategoryGroup = {
-  name: string;
-  slug: string;
-  tagline: string;
-  image?: string; // e.g. "/images/collections/shoes.jpg" — add later
-  categories: Category[];
-};
-
-export const categoryGroups: CategoryGroup[] = [
-  {
-    name: "Shoes",
-    slug: "shoes",
-    tagline: "From statement sneakers to sharp brogues.",
-    categories: [
-      { name: "Sneakers", slug: "sneakers" },
-      { name: "Brogues", slug: "brogues" },
-      { name: "Boots", slug: "boots" },
-      { name: "Sandals", slug: "sandals" },
-      { name: "Slides", slug: "slides" },
-    ],
-  },
-  {
-    name: "Clothing",
-    slug: "clothing",
-    tagline: "Boardroom-ready to street-ready.",
-    categories: [
-      { name: "Corporate Shirts", slug: "corporate-shirts" },
-      { name: "Street T-Shirts", slug: "street-t-shirts" },
-      { name: "Jeans Trousers", slug: "jeans-trousers" },
-      { name: "Pant Trousers", slug: "pant-trousers" },
-      { name: "Jerseys", slug: "jerseys" },
-    ],
-  },
-  {
-    name: "Accessories",
-    slug: "accessories",
-    tagline: "The details that finish the fit.",
-    categories: [
-      { name: "Socks", slug: "socks" },
-      { name: "Caps", slug: "caps" },
-      { name: "Jewellery", slug: "jewellery" },
-    ],
-  },
-];
-
-// Finds a category by its slug, e.g. "sneakers" -> { name: "Sneakers", ... }
-export function findCategory(slug: string) {
-  for (const group of categoryGroups) {
+// Finds a subcategory by its slug, e.g. "sneakers" -> { name: "Sneakers", group: Shoes, ... }
+// Also accepts a top-level slug such as "shoes".
+export function findCategory(
+  groups: CategoryGroup[],
+  slug: string,
+): (Category & { group: CategoryGroup | null }) | undefined {
+  for (const group of groups) {
+    if (group.slug === slug) return { id: group.id, name: group.name, slug: group.slug, group: null };
     const category = group.categories.find((c) => c.slug === slug);
     if (category) return { ...category, group };
   }
   return undefined;
 }
 
-// Finds a collection by its slug, e.g. "shoes"
-export function findGroup(slug: string) {
-  return categoryGroups.find((g) => g.slug === slug);
+// Finds a top-level collection by its slug, e.g. "shoes"
+export function findGroup(groups: CategoryGroup[], slug: string) {
+  return groups.find((g) => g.slug === slug);
 }
 
 /*

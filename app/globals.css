@@ -2,33 +2,48 @@
 
 /*
   BRAND COLOURS — change them here and the whole site updates.
-  Use them as Tailwind classes, e.g. bg-brand-black, text-brand-red,
-  border-brand-ink, bg-brand-cream.
+  Use them as Tailwind classes, e.g. bg-brand-charcoal, text-brand-red,
+  border-brand-ink, bg-brand-mist.
 */
 @theme {
-  /* Charcoal: softer than pure black */
-  --color-brand-black: #1c1c1e;
-  /* Slightly lighter charcoal, for cards and hover states on dark areas */
-  --color-brand-ink: #2c2c30;
-  /* Bright, premium red — our accent colour */
-  --color-brand-red: #f0222e;
-  /* Deeper red for hover effects on red buttons */
-  --color-brand-red-dark: #c9141f;
-  /* Very light red tint for soft backgrounds */
-  --color-brand-blush: #fff0f0;
-  /* Clean white and a warm off-white for alternating sections */
-  --color-brand-white: #ffffff;
-  --color-brand-cream: #f6f5f2;
+  /* Bright signature red — buttons, accents and the red full stops */
+  --color-brand-red: #e8141a;
+  /* Deeper red for hover effects on red buttons and the announcement bar */
+  --color-brand-red-dark: #c40a0f;
+  /* Charcoal for the header, footer and dark bands */
+  --color-brand-charcoal: #232524;
+  /* Near-black for headings and body text */
+  --color-brand-ink: #1e1f21;
+  /* Cool light grey for soft sections and behind product photos */
+  --color-brand-mist: #eceef3;
+  /* Darker cool grey for tiles and image backdrops */
+  --color-brand-steel: #d0d2db;
   /* Grey for secondary text */
-  --color-brand-muted: #6b6b70;
+  --color-brand-muted: #6b6e76;
+  --color-brand-white: #ffffff;
+  /*
+    Hero panel background. It matches the TEMPORARY hero photo's backdrop
+    so the cut-out model blends in — change it when the real hero arrives.
+  */
+  --color-brand-hero: #e1e0dc;
 }
 
 @theme inline {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  /* Tall condensed headline font (Bebas Neue). Use the class "font-display". */
+  --font-display: var(--font-bebas-neue);
 }
 
 body {
   background: var(--color-brand-white);
-  color: var(--color-brand-black);
+  color: var(--color-brand-ink);
+}
+
+/* Hides the scrollbar on sideways-scrolling rows while keeping them scrollable */
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
