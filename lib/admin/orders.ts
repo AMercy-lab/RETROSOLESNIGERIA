@@ -57,6 +57,11 @@ export type PaymentRow = {
   amount_kobo: number;
   status: string;
   created_at: string;
+  rejection_reason: string | null;
+  amount_received_kobo: number | null;
+  verified_at: string | null;
+  // bank-transfer receipts, with a short-lived private viewing link
+  proofs: { id: string; customer_note: string | null; created_at: string; url: string | null; isPdf: boolean }[];
 };
 
 const ORDER_COLUMNS =
@@ -169,12 +174,36 @@ export async function getOrder(id: string) {
       .select("id, confirmed_at, payment_due_at, subtotal_kobo, delivery_fee_kobo, total_kobo, state")
       .eq("order_id", id)
       .order("confirmed_at", { ascending: false }),
-    supabase.from("payments").select("id, method, amount_kobo, status, created_at").eq("order_id", id).order("created_at"),
+    supabase
+      .from("payments")
+      .select("id, method, amount_kobo, status, created_at, rejection_reason, amount_received_kobo, verified_at")
+      .eq("order_id", id)
+      .order("created_at"),
   ]);
   if (order.error || items.error || confirmations.error || payments.error) {
     throw new Error("Could not load the order");
   }
   if (!order.data) return null;
+
+  // Receipts for this order's payments, each with a private link valid for 10 minutes.
+  const paymentRows = (payments.data ?? []) as unknown as Omit<PaymentRow, "proofs">[];
+  const proofsByPayment = new Map<string, PaymentRow["proofs"]>();
+  if (paymentRows.length > 0) {
+    const { data: proofRows } = await supabase
+      .from("payment_proofs")
+      .select("id, payment_id, storage_path, customer_note, created_at")
+      .in("payment_id", paymentRows.map((p) => p.id))
+      .order("created_at");
+    const rows = (proofRows ?? []) as { id: string; payment_id: string; storage_path: string; customer_note: string | null; created_at: string }[];
+    const signed = rows.length
+      ? (await supabase.storage.from("payment-proofs").createSignedUrls(rows.map((r) => r.storage_path), 600)).data ?? []
+      : [];
+    rows.forEach((r, i) => {
+      const list = proofsByPayment.get(r.payment_id) ?? [];
+      list.push({ id: r.id, customer_note: r.customer_note, created_at: r.created_at, url: signed[i]?.signedUrl ?? null, isPdf: r.storage_path.endsWith(".pdf") });
+      proofsByPayment.set(r.payment_id, list);
+    });
+  }
 
   const o = order.data as unknown as OrderRow;
   const confs = (confirmations.data ?? []) as unknown as ConfirmationRow[];
@@ -184,7 +213,7 @@ export async function getOrder(id: string) {
     items: (items.data ?? []) as unknown as OrderItemRow[],
     confirmations: confs,
     activeConfirmation: active,
-    payments: (payments.data ?? []) as unknown as PaymentRow[],
+    payments: paymentRows.map((p) => ({ ...p, proofs: proofsByPayment.get(p.id) ?? [] })),
     stage: orderStage(o, active),
   };
 }

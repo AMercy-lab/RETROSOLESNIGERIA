@@ -32,7 +32,10 @@ async function guard(orderId: string): Promise<string | null> {
 
 // After a successful action: refresh the lists and reload the order page with a
 // message banner (the form used may no longer be shown, e.g. after cancelling).
-function done(orderId: string, what: "confirmed" | "reported" | "all_unavailable" | "unavailable" | "cancelled"): never {
+function done(
+  orderId: string,
+  what: "confirmed" | "reported" | "all_unavailable" | "unavailable" | "cancelled" | "payment_confirmed" | "payment_rejected",
+): never {
   revalidatePath("/admin");
   revalidatePath(`/admin/orders/${orderId}`);
   redirect(`/admin/orders/${orderId}?done=${what}`);
@@ -50,6 +53,9 @@ function explain(error: { message?: string; code?: string } | null, fallback: st
     "Missing or invalid confirmed price",
     "Items cannot be reported unavailable at this stage",
     "Every reported item must belong to this order",
+    "Amount received",
+    "Only a bank transfer awaiting verification",
+    "This payment belongs to a confirmation that was replaced or cancelled",
   ].find((k) => msg.includes(k));
   return { status: "error", message: known ? msg.replace(/\s*\(status: [a-z_]+\)/, "") + "." : fallback };
 }
@@ -123,4 +129,40 @@ export async function cancelUnpaidOrder(orderId: string): Promise<ActionState> {
   if (error) return explain(error, "The order could not be cancelled. Please try again.");
 
   done(orderId, "cancelled");
+}
+
+// "Confirm payment": RSN enters the amount that actually arrived in the bank.
+// The database only confirms it if it matches the confirmed total exactly.
+export async function confirmBankTransfer(orderId: string, paymentId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  const denied = await guard(orderId);
+  if (denied) return { status: "error", message: denied };
+  if (!UUID.test(paymentId)) return { status: "error", message: "Unknown payment." };
+  const received = nairaToKobo(formData.get("amount_received"));
+  if (received === null) return { status: "error", message: "Please enter the amount you received in naira." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_confirm_bank_transfer", { p_payment_id: paymentId, p_amount_received_kobo: received });
+  if (error) return explain(error, "The payment could not be confirmed. Please try again.");
+  done(orderId, "payment_confirmed");
+}
+
+// "Reject": the money did not arrive (or not the right amount). The customer sees the reason.
+export async function rejectBankTransfer(orderId: string, paymentId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  const denied = await guard(orderId);
+  if (denied) return { status: "error", message: denied };
+  if (!UUID.test(paymentId)) return { status: "error", message: "Unknown payment." };
+  const reason = String(formData.get("reason") ?? "").trim().slice(0, 300);
+  if (!reason) return { status: "error", message: "Please give the customer a short reason, e.g. \"No transfer received yet\"." };
+  const receivedText = String(formData.get("amount_received") ?? "").trim();
+  const received = receivedText ? nairaToKobo(receivedText) : null;
+  if (receivedText && received === null) return { status: "error", message: "The amount received should be a number in naira (or leave it empty)." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_reject_bank_transfer", {
+    p_payment_id: paymentId,
+    p_reason: reason,
+    p_amount_received_kobo: received,
+  });
+  if (error) return explain(error, "The payment could not be rejected. Please try again.");
+  done(orderId, "payment_rejected");
 }

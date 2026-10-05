@@ -1,13 +1,27 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import Countdown from "@/components/Countdown";
-import { CancelOrderForm, ConfirmOrderForm, MarkUnavailableForm, ReportUnavailableForm } from "@/components/admin/OrderActions";
+import {
+  CancelOrderForm,
+  ConfirmOrderForm,
+  ConfirmPaymentForm,
+  MarkUnavailableForm,
+  RejectPaymentForm,
+  ReportUnavailableForm,
+} from "@/components/admin/OrderActions";
 import StageBadge from "@/components/admin/StageBadge";
 import { ArrowLeftIcon } from "@/components/icons";
 import { availabilityLabel, isProductAvailability } from "@/lib/catalog/availability";
 import { getOrder } from "@/lib/admin/orders";
 import { formatNaira } from "@/lib/format";
-import { cancelUnpaidOrder, confirmOrder, markOrderUnavailable, reportUnavailableItems } from "./actions";
+import {
+  cancelUnpaidOrder,
+  confirmBankTransfer,
+  confirmOrder,
+  markOrderUnavailable,
+  rejectBankTransfer,
+  reportUnavailableItems,
+} from "./actions";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -29,6 +43,8 @@ const DONE: Record<string, string> = {
   all_unavailable: "Every item is unavailable, so the order has been cancelled. Nothing was paid.",
   unavailable: "Order marked unavailable and cancelled. Nothing was paid.",
   cancelled: "Order cancelled. Nothing was paid.",
+  payment_confirmed: "Payment confirmed. The order is now Processing — time to prepare it for dispatch.",
+  payment_rejected: "Payment rejected. The customer sees your reason and can send a new receipt while their hour lasts.",
 };
 
 const CONFIRMATION_STATE: Record<string, string> = {
@@ -56,6 +72,7 @@ export default async function AdminOrderPage({
   const { order: o, items, confirmations, activeConfirmation, payments, stage } = data;
 
   const remaining = items.filter((i) => !i.excluded);
+  const toVerify = payments.find((p) => p.method === "bank_transfer" && p.status === "awaiting_verification") ?? null;
   const canConfirm = ["needs_confirmation", "confirmation_overdue", "payment_window_expired", "awaiting_payment"].includes(stage);
   const canReport = canConfirm;
   const canCancel = !["processing", "shipped", "delivered", "cancelled", "unavailable", "payment_to_verify"].includes(stage);
@@ -163,7 +180,11 @@ export default async function AdminOrderPage({
                 ))}
                 {payments.map((p) => (
                   <li key={p.id} className="text-brand-muted">
-                    Payment ({p.method === "paystack" ? "Paystack" : "bank transfer"}) {formatNaira(Number(p.amount_kobo))} — {p.status}
+                    Payment ({p.method === "paystack" ? "Paystack" : "bank transfer"}) {formatNaira(Number(p.amount_kobo))} —{" "}
+                    {p.status.replaceAll("_", " ")}
+                    {p.amount_received_kobo != null ? ` · received ${formatNaira(Number(p.amount_received_kobo))}` : ""}
+                    {p.rejection_reason ? ` · "${p.rejection_reason}"` : ""}
+                    {p.proofs.length > 0 ? ` · ${p.proofs.length} receipt${p.proofs.length === 1 ? "" : "s"}` : ""}
                   </li>
                 ))}
               </ul>
@@ -173,6 +194,44 @@ export default async function AdminOrderPage({
 
         {/* RSN actions */}
         <aside className="flex flex-col gap-6 lg:sticky lg:top-32">
+          {toVerify && (
+            <section className="flex flex-col gap-4 rounded-3xl border-2 border-brand-red p-5 sm:p-6" data-testid="verify-payment">
+              <h2 className="font-display text-3xl tracking-wide">Payment to verify</h2>
+              <p className="text-sm">
+                Bank transfer of <strong>{formatNaira(Number(toVerify.amount_kobo))}</strong> expected. Check your bank account
+                (or bank SMS) before confirming.
+              </p>
+              {toVerify.proofs.map((proof) => (
+                <div key={proof.id} className="flex flex-col gap-2 text-sm">
+                  {proof.url ? (
+                    proof.isPdf ? (
+                      <a href={proof.url} target="_blank" rel="noreferrer" className="font-semibold underline underline-offset-4 hover:text-brand-red">
+                        Open receipt (PDF)
+                      </a>
+                    ) : (
+                      <a href={proof.url} target="_blank" rel="noreferrer" title="Open full size">
+                        {/* eslint-disable-next-line @next/next/no-img-element -- short-lived private link */}
+                        <img src={proof.url} alt="Customer's transfer receipt" className="max-h-80 w-full rounded-2xl bg-brand-mist object-contain" />
+                      </a>
+                    )
+                  ) : (
+                    <p className="text-brand-muted">Receipt couldn&apos;t be loaded — refresh the page.</p>
+                  )}
+                  <p className="text-brand-muted">
+                    Sent {lagos(proof.created_at)}
+                    {proof.customer_note ? ` — "${proof.customer_note}"` : ""}
+                  </p>
+                </div>
+              ))}
+              <ConfirmPaymentForm action={confirmBankTransfer.bind(null, o.id, toVerify.id)} expectedText={formatNaira(Number(toVerify.amount_kobo))} />
+              <details className="text-sm">
+                <summary className="cursor-pointer font-semibold">Money didn&apos;t arrive? Reject</summary>
+                <div className="mt-3">
+                  <RejectPaymentForm action={rejectBankTransfer.bind(null, o.id, toVerify.id)} />
+                </div>
+              </details>
+            </section>
+          )}
           {canConfirm && remaining.length > 0 && (
             <section className="rounded-3xl bg-brand-mist p-5 sm:p-6">
               <h2 className="mb-4 font-display text-3xl tracking-wide">

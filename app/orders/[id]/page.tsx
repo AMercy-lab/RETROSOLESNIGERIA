@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Countdown from "@/components/Countdown";
+import BankTransferPanel from "@/components/orders/BankTransferPanel";
 import { CancelOrderButton, DecisionButtons } from "@/components/orders/GuestOrderActions";
 import SectionHeading from "@/components/SectionHeading";
 import { formatNaira } from "@/lib/format";
 import { canCustomerCancel, customerStage, getGuestOrder, type CustomerStage } from "@/lib/orders/guest-order";
+import { getBankDetails } from "@/lib/store-settings";
 
 // A private page: never indexed, never passes the link on to other websites.
 export const metadata: Metadata = {
@@ -74,6 +76,8 @@ export default async function GuestOrderPage({
   if (!order || !secret) return <NotFound />;
 
   const stage = customerStage(order);
+  const bank = stage === "pay_now" ? await getBankDetails() : null;
+  const rejected = order.latest_payment?.status === "rejected" ? order.latest_payment : null;
   const c = order.confirmation;
   const unavailable = order.items.filter((i) => i.supplier_status === "unavailable" && !i.excluded);
   const showCancel = canCustomerCancel(order) && stage !== "your_decision";
@@ -143,10 +147,24 @@ export default async function GuestOrderPage({
             <p>
               Please pay by <strong>{lagos(c.payment_due_at)}</strong> — <Countdown dueAt={c.payment_due_at} />
             </p>
-            <p className="rounded-2xl bg-white px-4 py-3 text-sm text-brand-muted">
-              Payment options will appear here very soon. Supplier stock changes quickly, so the confirmed total holds
-              for 1 hour only.
+            {rejected && (
+              <p role="alert" className="rounded-2xl bg-brand-red/10 px-4 py-3 text-sm text-brand-red-dark" data-testid="rejected-note">
+                RSN couldn&apos;t confirm your previous transfer
+                {rejected.rejection_reason ? <>: &ldquo;{rejected.rejection_reason}&rdquo;</> : "."} You can send a new
+                receipt below.
+              </p>
+            )}
+            <p className="text-sm text-brand-muted">
+              Supplier stock changes quickly, so this total holds for 1 hour only.
+              {order.payment_method === "paystack" && " Card payment via Paystack is coming soon — for now, please pay by bank transfer."}
             </p>
+            <BankTransferPanel
+              orderId={order.order_id}
+              token={secret}
+              orderNumber={order.order_number}
+              amountText={formatNaira(Number(c.total_kobo))}
+              bank={bank}
+            />
           </div>
         )}
         {stage === "payment_expired" && (
@@ -155,7 +173,12 @@ export default async function GuestOrderPage({
             again before you can pay. RSN will be in touch — nothing has been charged.
           </p>
         )}
-        {stage === "payment_review" && <p>We&apos;ve received your payment details. RSN is checking the payment.</p>}
+        {stage === "payment_review" && (
+          <p>
+            Thank you — we&apos;ve received your transfer receipt. RSN is checking its bank account and will confirm your
+            payment shortly. Your order is prepared once the payment is confirmed.
+          </p>
+        )}
         {stage === "processing" && <p>Your payment is confirmed. RSN is preparing your order for delivery.</p>}
         {stage === "shipped" && <p>Your order is on its way to you.</p>}
         {stage === "delivered" && <p>Your order has been delivered. Thank you for shopping with RSN!</p>}

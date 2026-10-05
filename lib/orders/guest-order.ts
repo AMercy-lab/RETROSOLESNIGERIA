@@ -43,6 +43,14 @@ export type GuestOrder = {
     total_kobo: number;
   } | null;
   payment_open: boolean;
+  // The most recent payment attempt (if any), incl. RSN's reason when a transfer was rejected.
+  latest_payment: {
+    method: "bank_transfer" | "paystack";
+    status: string;
+    rejection_reason: string | null;
+    has_proof: boolean;
+    created_at: string;
+  } | null;
 };
 
 // What the customer sees, worked out from the statuses and deadlines.

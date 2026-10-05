@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { signOut } from "@/app/admin/actions";
 import SectionHeading from "@/components/SectionHeading";
@@ -41,9 +42,15 @@ export default async function AdminDashboardLayout({ children }: { children: Rea
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 md:py-12">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-brand-charcoal px-5 py-3 text-white">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em]">
-          RSN admin <span className="ml-2 font-normal normal-case tracking-normal text-white/60">{session.email}</span>
-        </p>
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em]">
+            RSN admin <span className="ml-2 font-normal normal-case tracking-normal text-white/60">{session.email}</span>
+          </p>
+          <nav aria-label="Admin" className="flex gap-4 text-xs font-semibold uppercase tracking-widest">
+            <Link href="/admin" className="hover:text-brand-red">Orders</Link>
+            <Link href="/admin/settings" className="hover:text-brand-red">Settings</Link>
+          </nav>
+        </div>
         <div className="[&_button]:border-white/30 [&_button]:text-white">{signOutButton}</div>
       </div>
       {children}

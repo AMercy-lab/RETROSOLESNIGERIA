@@ -185,3 +185,51 @@ export function CancelOrderForm({ action }: { action: Action }) {
     </form>
   );
 }
+
+// ---------------------------------------------------------------------
+// Bank transfer: confirm (with the amount actually received) or reject
+// ---------------------------------------------------------------------
+export function ConfirmPaymentForm({ action, expectedText }: { action: Action; expectedText: string }) {
+  const [state, formAction, pending] = useActionState(action, { status: "idle" });
+  return (
+    <form
+      action={formAction}
+      onSubmit={(e) => {
+        if (!window.confirm("Have you checked your bank account and seen this money arrive?")) e.preventDefault();
+      }}
+      className="flex flex-col gap-3"
+      data-testid="confirm-payment-form"
+    >
+      <label>
+        <span className="mb-1 block text-[11px] font-semibold uppercase tracking-widest">
+          Amount you received in your bank (₦) — expected {expectedText}
+        </span>
+        <input name="amount_received" inputMode="decimal" required placeholder="Check your bank, then type the amount" className={input} />
+      </label>
+      <button type="submit" disabled={pending} className={primary}>
+        {pending ? "Confirming…" : "Confirm payment"}
+      </button>
+      <Result state={state} />
+    </form>
+  );
+}
+
+export function RejectPaymentForm({ action }: { action: Action }) {
+  const [state, formAction, pending] = useActionState(action, { status: "idle" });
+  return (
+    <form action={formAction} className="flex flex-col gap-3" data-testid="reject-payment-form">
+      <label>
+        <span className="mb-1 block text-[11px] font-semibold uppercase tracking-widest">Reason for the customer</span>
+        <input name="reason" required maxLength={300} placeholder="e.g. No transfer received yet" className={input} />
+      </label>
+      <label>
+        <span className="mb-1 block text-[11px] font-semibold uppercase tracking-widest">Amount received, if any (₦, optional)</span>
+        <input name="amount_received" inputMode="decimal" placeholder="Leave empty if nothing arrived" className={input} />
+      </label>
+      <button type="submit" disabled={pending} className={secondary}>
+        {pending ? "Saving…" : "Reject payment"}
+      </button>
+      <Result state={state} />
+    </form>
+  );
+}
