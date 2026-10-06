@@ -16,7 +16,7 @@ import { getSupabaseEnv } from "@/lib/supabase/env";
 */
 export function createAdminClient() {
   const { url } = getSupabaseEnv();
-  const secretKey = process.env.SUPABASE_SECRET_KEY;
+  const secretKey = process.env.SUPABASE_SECRET_KEY?.trim().replace(/^["']+|["']+$/g, "");
 
   if (!secretKey) {
     throw new Error(

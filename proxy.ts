@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { getSupabaseEnv, isSupabaseConfigured } from "@/lib/supabase/env";
 
 /*
   Runs before /admin and /auth pages only (see `matcher` below).
@@ -11,9 +12,8 @@ import { NextResponse, type NextRequest } from "next/server";
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !publishableKey) return response;
+  if (!isSupabaseConfigured()) return response;
+  const { url, publishableKey } = getSupabaseEnv();
 
   const supabase = createServerClient(url, publishableKey, {
     cookies: {
