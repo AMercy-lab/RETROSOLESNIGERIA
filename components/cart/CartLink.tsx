@@ -4,7 +4,8 @@ import Link from "next/link";
 import { BagIcon } from "@/components/icons";
 import { useCart } from "@/lib/cart/store";
 
-// The cart icon in the header, with the number of items in the cart.
+// The cart button in the header: a red pill with the bag and the number of
+// items (plus the word "Cart" on wider screens), so it is easy to spot on phones.
 export default function CartLink() {
   const { count } = useCart();
 
@@ -12,14 +13,12 @@ export default function CartLink() {
     <Link
       href="/cart"
       aria-label={count === 0 ? "Cart, empty" : `Cart, ${count} item${count === 1 ? "" : "s"}`}
-      className="relative p-2 transition-colors hover:text-brand-red"
+      className="ml-1 flex items-center gap-1.5 rounded-full bg-brand-red px-3 py-2 text-xs font-semibold uppercase tracking-widest text-white transition-colors hover:bg-brand-red-dark sm:px-4"
+      data-testid="cart-link"
     >
-      <BagIcon />
-      {count > 0 && (
-        <span className="absolute right-0 top-0 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-brand-red px-1 text-[10px] font-bold text-white">
-          {count > 99 ? "99+" : count}
-        </span>
-      )}
+      <BagIcon className="h-4 w-4" />
+      <span className="hidden sm:inline">Cart</span>
+      <span className="tabular-nums">{count > 99 ? "99+" : count}</span>
     </Link>
   );
 }

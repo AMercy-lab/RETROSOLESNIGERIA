@@ -3,11 +3,16 @@ import type { ProductAvailability } from "@/lib/catalog/availability";
 import type { Product } from "@/lib/catalog/types";
 
 /*
-  THE SHOPPING CART — kept in the visitor's browser only.
+  THE SHOPPING CART — kept in the visitor's browser, and for signed-in
+  customers also saved to their account (so the RSN app shows the same cart).
 
-  - Nothing here talks to Supabase: adding to the cart never creates an order.
+  - Adding to the cart never creates an order.
   - The cart is saved in the browser (localStorage), so it survives page
     changes and refreshes, and no sign-in is needed.
+  - Signed in, every change is also sent to /api/account/cart, and the saved
+    cart is fetched again when a page opens or the tab comes back into view
+    (see syncCart below). The first time on a device, the guest cart and the
+    account's cart are combined.
   - One cart line = one product in one size. Adding the same product in the
     same size again increases the quantity instead of adding a second line.
   - Prices stored here are ONLY for displaying the cart. The cart page
@@ -83,7 +88,7 @@ function getServerSnapshot(): CartState {
   return EMPTY;
 }
 
-function setState(next: CartState) {
+function setState(next: CartState, fromAccount = false) {
   state = next;
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
@@ -91,6 +96,7 @@ function setState(next: CartState) {
     // Storage full or blocked (e.g. private mode): the cart still works for this page visit.
   }
   listeners.forEach((listener) => listener());
+  if (!fromAccount) changedLocally();
 }
 
 function subscribe(listener: () => void) {
@@ -176,6 +182,113 @@ export function onItemAdded(handler: (detail: ItemAddedDetail) => void) {
   const listener = (event: Event) => handler((event as CustomEvent).detail);
   window.addEventListener(ADDED_EVENT, listener);
   return () => window.removeEventListener(ADDED_EVENT, listener);
+}
+
+// ---------------------------------------------------------------------
+// Syncing with the signed-in customer's account
+// ---------------------------------------------------------------------
+const SYNC_KEY = "rsn-cart-sync-v1";
+// account: the email this browser's cart was last synced with (null = guest cart)
+// dirty: changed here but not yet saved to the account (e.g. while offline)
+type SyncInfo = { account: string | null; dirty: boolean };
+
+function loadSync(): SyncInfo {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(SYNC_KEY) ?? "null") as SyncInfo | null;
+    return { account: typeof parsed?.account === "string" ? parsed.account : null, dirty: parsed?.dirty === true };
+  } catch {
+    return { account: null, dirty: false };
+  }
+}
+
+function saveSync(info: SyncInfo) {
+  try {
+    window.localStorage.setItem(SYNC_KEY, JSON.stringify(info));
+  } catch {
+    // Storage blocked: syncing simply starts again next time.
+  }
+}
+
+// Supabase keeps the login in a cookie named sb-<project>-auth-token.
+const looksSignedIn = () => /(?:^|;\s*)sb-[^=]+-auth-token/.test(document.cookie);
+
+const sameLines = (a: CartLine[], b: CartLine[]) => JSON.stringify(a) === JSON.stringify(b);
+
+// Combine two carts: every line from both; the bigger quantity where both have it.
+function combine(account: CartLine[], device: CartLine[]): CartLine[] {
+  const lines = account.map((line) => {
+    const mine = device.find((l) => lineKey(l) === lineKey(line));
+    return mine ? { ...line, quantity: Math.max(line.quantity, mine.quantity) } : line;
+  });
+  const extra = device.filter((l) => !account.some((line) => lineKey(line) === lineKey(l)));
+  return [...lines, ...extra].slice(0, 50);
+}
+
+// Signed out: forget the account's cart on this browser (it stays saved on the account).
+function signedOut() {
+  if (loadSync().account) {
+    saveSync({ account: null, dirty: false });
+    setState(EMPTY, true);
+  }
+}
+
+async function pushToAccount() {
+  try {
+    const res = await fetch("/api/account/cart", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lines: getSnapshot().lines }),
+    });
+    if (res.ok) saveSync({ ...loadSync(), dirty: false });
+    else if (res.status === 401) signedOut();
+  } catch {
+    // Offline: still marked "dirty", so it is sent at the next sync.
+  }
+}
+
+let pushTimer: ReturnType<typeof setTimeout> | undefined;
+function changedLocally() {
+  const info = loadSync();
+  if (!info.account) return; // a guest cart stays in this browser
+  saveSync({ ...info, dirty: true });
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(pushToAccount, 400);
+}
+
+let syncing: Promise<void> | null = null;
+
+// Bring this browser's cart and the account's saved cart in line.
+export function syncCart() {
+  if (typeof window === "undefined") return Promise.resolve();
+  syncing ??= (async () => {
+    try {
+      if (!looksSignedIn()) return signedOut();
+      const res = await fetch("/api/account/cart", { cache: "no-store" });
+      if (res.status === 401) return signedOut();
+      if (!res.ok) return;
+      const saved = (await res.json()) as { email: string; lines: unknown[] };
+      const accountLines = (Array.isArray(saved.lines) ? saved.lines : []).filter(isValidLine);
+      const device = getSnapshot().lines;
+      const info = loadSync();
+
+      if (info.account !== saved.email) {
+        // First sync for this account here: combine the guest cart with the saved one.
+        const lines = combine(accountLines, info.account ? [] : device);
+        setState({ lines }, true);
+        saveSync({ account: saved.email, dirty: true });
+        await pushToAccount();
+      } else if (info.dirty) {
+        await pushToAccount(); // changes made here while offline win
+      } else if (!sameLines(device, accountLines)) {
+        setState({ lines: accountLines }, true); // changed on another device
+      }
+    } catch {
+      // Offline: try again at the next sync.
+    } finally {
+      syncing = null;
+    }
+  })();
+  return syncing;
 }
 
 // ---------------------------------------------------------------------
