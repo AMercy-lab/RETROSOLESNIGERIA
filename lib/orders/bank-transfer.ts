@@ -1,5 +1,5 @@
 import "server-only";
-import { createHash, randomBytes } from "crypto";
+import { randomBytes } from "crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /*
@@ -10,7 +10,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
      order's own folder.
   4. Attach it to the payment — the database then marks the payment
      "awaiting verification" (never "confirmed"; only RSN can confirm).
-  Each database step checks the private link's secret again.
+  Each database step checks the order's private-link fingerprint again
+  (from the link's secret, or from the signed-in customer's account).
 */
 
 export const MAX_PROOF_BYTES = 5 * 1024 * 1024;
@@ -28,16 +29,13 @@ const KINDS = [
 
 export type ProofResult = { ok: true } | { ok: false; status: number; message: string };
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const TOKEN = /^[A-Za-z0-9_-]{40,64}$/;
-
 export async function submitTransferProof(
   orderId: string,
-  token: string | null,
+  hash: string | null,
   file: File | null,
   note: string,
 ): Promise<ProofResult> {
-  if (!UUID.test(orderId) || !token || !TOKEN.test(token)) return { ok: false, status: 404, message: "We couldn't find that order." };
+  if (!hash) return { ok: false, status: 404, message: "We couldn't find that order." };
   if (!file || file.size === 0) return { ok: false, status: 400, message: "Please choose your receipt (a photo, screenshot or PDF)." };
   if (file.size > MAX_PROOF_BYTES) return { ok: false, status: 400, message: "That file is too large. Please upload one under 5 MB." };
 
@@ -45,7 +43,6 @@ export async function submitTransferProof(
   const kind = KINDS.find((k) => k.magic(bytes));
   if (!kind) return { ok: false, status: 400, message: "Please upload a JPG, PNG or WEBP image, or a PDF." };
 
-  const hash = createHash("sha256").update(token).digest("hex");
   const db = createAdminClient();
 
   const started = await db.rpc("guest_start_bank_transfer", { p_order_id: orderId, p_token_hash: hash });

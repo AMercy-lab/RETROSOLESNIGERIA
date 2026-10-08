@@ -5,7 +5,7 @@ import BankTransferPanel from "@/components/orders/BankTransferPanel";
 import { CancelOrderButton, DecisionButtons } from "@/components/orders/GuestOrderActions";
 import SectionHeading from "@/components/SectionHeading";
 import { formatNaira } from "@/lib/format";
-import { canCustomerCancel, customerStage, getGuestOrder, type CustomerStage } from "@/lib/orders/guest-order";
+import { canCustomerCancel, customerStage, getGuestOrder, orderKey, type CustomerStage } from "@/lib/orders/guest-order";
 import { getBankDetails } from "@/lib/store-settings";
 
 // A private page: never indexed, never passes the link on to other websites.
@@ -45,22 +45,31 @@ function NotFound() {
     <section className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-16 sm:px-6 md:py-24">
       <SectionHeading as="h1" eyebrow="Your order" title="We couldn't find that order" />
       <p className="text-brand-muted">
-        The link may be incomplete. Please open the full link you received, or find your order on the device you used
-        to place it.
+        The link may be incomplete. Sign in with the email you ordered with to see all your orders, or open the full
+        link you received.
       </p>
-      <Link
-        href="/orders"
-        className="self-start rounded-full bg-brand-red px-8 py-4 text-xs font-semibold uppercase tracking-widest text-white transition-colors hover:bg-brand-red-dark"
-      >
-        My orders on this device
-      </Link>
+      <div className="flex flex-wrap gap-3">
+        <Link
+          href="/account"
+          className="rounded-full bg-brand-red px-8 py-4 text-xs font-semibold uppercase tracking-widest text-white transition-colors hover:bg-brand-red-dark"
+        >
+          Sign in
+        </Link>
+        <Link
+          href="/orders"
+          className="rounded-full border border-brand-ink/20 px-8 py-4 text-xs font-semibold uppercase tracking-widest transition-colors hover:border-brand-ink"
+        >
+          Orders on this device
+        </Link>
+      </div>
     </section>
   );
 }
 
 /*
   The customer's private order page: /orders/<id>?token=<secret>
-  Only shows the order when the secret in the link matches.
+  Only shows the order when the secret in the link matches — or, without the
+  secret, when the signed-in customer owns the order.
 */
 export default async function GuestOrderPage({
   params,
@@ -72,8 +81,8 @@ export default async function GuestOrderPage({
   const { id } = await params;
   const { token } = await searchParams;
   const secret = typeof token === "string" ? token : null;
-  const order = await getGuestOrder(id, secret);
-  if (!order || !secret) return <NotFound />;
+  const order = await getGuestOrder(id, await orderKey(id, secret));
+  if (!order) return <NotFound />;
 
   const stage = customerStage(order);
   const bank = stage === "pay_now" ? await getBankDetails() : null;
@@ -229,9 +238,13 @@ export default async function GuestOrderPage({
 
       {showCancel && <CancelOrderButton orderId={order.order_id} token={secret} />}
 
-      <p className="text-xs text-brand-muted">
-        Keep this page&apos;s link private — anyone with it can see this order.
-      </p>
+      {secret ? (
+        <p className="text-xs text-brand-muted">Keep this page&apos;s link private — anyone with it can see this order.</p>
+      ) : (
+        <Link href="/account" className="text-sm text-brand-muted underline underline-offset-4 hover:text-brand-red">
+          Back to my orders
+        </Link>
+      )}
     </section>
   );
 }

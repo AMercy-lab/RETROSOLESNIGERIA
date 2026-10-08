@@ -13,6 +13,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
   3. Ask the database's place_order() to create the order. The DATABASE takes
      every price, name and availability from the catalogue itself — nothing
      price-related is sent from here.
+  4. If the customer is signed in, link the order to their account so it
+     shows on every device they sign in on. (The private link still works.)
 */
 
 export type PaymentMethod = "bank_transfer" | "paystack";
@@ -74,7 +76,7 @@ export function validatePlaceOrder(body: unknown): { ok: true; input: PlaceOrder
   return { ok: true, input: { delivery: { name, phone, email, address, city, state }, paymentMethod, items } };
 }
 
-export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResult> {
+export async function placeOrder(input: PlaceOrderInput, customerId?: string | null): Promise<PlaceOrderResult> {
   let supabase;
   try {
     supabase = createAdminClient();
@@ -88,7 +90,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   const tokenHash = createHash("sha256").update(accessToken).digest("hex");
 
   const { data, error } = await supabase.rpc("place_order", {
-    p_customer_id: null, // sign-in comes later; every order is a guest order for now
+    p_customer_id: null, // placed with a private link; linked to the account below
     p_guest_token_hash: tokenHash,
     p_payment_method: input.paymentMethod,
     p_delivery: input.delivery,
@@ -114,6 +116,17 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   if (!row?.order_id) {
     return { ok: false, status: 500, message: "We couldn't place your order just now. Please try again in a moment." };
   }
+
+  if (customerId) {
+    const linked = await supabase.rpc("claim_order", {
+      p_order_id: row.order_id,
+      p_customer_id: customerId,
+      p_token_hash: tokenHash,
+    });
+    // Not fatal: the order exists, and signing in again links it by email.
+    if (linked.error) console.error("[orders] could not link order to account:", linked.error.code);
+  }
+
   return {
     ok: true,
     orderId: row.order_id,

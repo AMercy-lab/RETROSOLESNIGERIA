@@ -45,7 +45,7 @@ export default function BankTransferPanel({
   bank,
 }: {
   orderId: string;
-  token: string;
+  token: string | null; // null when the customer is signed in (the login cookie is used)
   orderNumber: string;
   amountText: string;
   bank: Bank | null;
@@ -67,7 +67,7 @@ export default function BankTransferPanel({
       setError("That file is too large. Please upload one under 5 MB.");
       return;
     }
-    form.set("token", token);
+    if (token) form.set("token", token);
     setBusy(true);
     setError(null);
     try {

@@ -1,9 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { customerStage, getGuestOrder } from "@/lib/orders/guest-order";
+import { customerStage, getGuestOrder, orderKey } from "@/lib/orders/guest-order";
 import { getBankDetails } from "@/lib/store-settings";
 
 /*
   GET /api/orders/<id>?token=<private link secret>
+  (or without the token, signed in: "Authorization: Bearer <login token>")
   The customer's own order, used by the RSN mobile app (the website page uses
   the same code). Answers 404 for an unknown order OR a wrong secret, so it
   never reveals whether an order exists.
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const { id } = await params;
   const token = request.nextUrl.searchParams.get("token");
   try {
-    const order = await getGuestOrder(id, token);
+    const order = await getGuestOrder(id, await orderKey(id, token, request));
     if (!order) return NextResponse.json({ error: "Order not found." }, { status: 404, headers: { "Cache-Control": "no-store" } });
     const bank = customerStage(order) === "pay_now" ? await getBankDetails() : null;
     return NextResponse.json({ order, bank }, { headers: { "Cache-Control": "no-store" } });

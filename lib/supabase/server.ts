@@ -27,7 +27,7 @@ export async function createClient() {
           }
         } catch {
           // Server components can't set cookies. That's fine: the session is
-          // refreshed by proxy.ts (for the admin area) before the page renders.
+          // refreshed by proxy.ts (admin, account and order pages) before the page renders.
         }
       },
     },

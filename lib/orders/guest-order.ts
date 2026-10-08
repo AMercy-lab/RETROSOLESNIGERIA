@@ -1,11 +1,13 @@
 import "server-only";
 import { createHash } from "crypto";
+import { getCustomer } from "@/lib/customer/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /*
   A GUEST'S ORDER, reached through their private order link.
   The link carries a secret (`token`); the database only answers when the
-  SHA-256 fingerprint of that secret matches the order. Shared by the order
+  SHA-256 fingerprint of that secret matches the order. A signed-in customer
+  reaches their own orders without the link (see orderKey). Shared by the order
   page and the /api/orders/[id] addresses (for the future mobile app).
 */
 
@@ -99,14 +101,28 @@ export function canCustomerCancel(o: GuestOrder) {
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const TOKEN = /^[A-Za-z0-9_-]{40,64}$/;
 
-// The fingerprint stored on the order, or null for an obviously invalid link.
-function fingerprint(orderId: string, token: string | null | undefined) {
-  if (!UUID.test(orderId) || !token || !TOKEN.test(token)) return null;
-  return createHash("sha256").update(token).digest("hex");
+/*
+  The order's private-link fingerprint, which every order function checks.
+  - With the private link's secret: its SHA-256 fingerprint.
+  - Without it, for a signed-in customer: the fingerprint of the order IF it
+    belongs to their account (otherwise null, as for a wrong link).
+  Pass the request from API routes (the app signs in with a header); pages
+  leave it out and the login cookie is used.
+*/
+export async function orderKey(orderId: string, token: string | null | undefined, request?: Request) {
+  if (!UUID.test(orderId)) return null;
+  if (token && TOKEN.test(token)) return createHash("sha256").update(token).digest("hex");
+  const customer = await getCustomer(request);
+  if (!customer) return null;
+  const { data, error } = await createAdminClient().rpc("customer_order_hash", { p_order_id: orderId, p_customer_id: customer.id });
+  if (error) {
+    console.error("[guest order] could not check the account:", error.code);
+    return null;
+  }
+  return typeof data === "string" ? data : null;
 }
 
-export async function getGuestOrder(orderId: string, token: string | null | undefined): Promise<GuestOrder | null> {
-  const hash = fingerprint(orderId, token);
+export async function getGuestOrder(orderId: string, hash: string | null): Promise<GuestOrder | null> {
   if (!hash) return null;
   const { data, error } = await createAdminClient().rpc("guest_order_details", { p_order_id: orderId, p_token_hash: hash });
   if (error) {
@@ -130,8 +146,7 @@ function explain(error: { message?: string; code?: string }): GuestActionResult 
   return { ok: false, status: 500, message: "Something went wrong. Please try again in a moment." };
 }
 
-export async function cancelGuestOrder(orderId: string, token: string | null | undefined): Promise<GuestActionResult> {
-  const hash = fingerprint(orderId, token);
+export async function cancelGuestOrder(orderId: string, hash: string | null): Promise<GuestActionResult> {
   if (!hash) return { ok: false, status: 404, message: "We couldn't find that order." };
   const { error } = await createAdminClient().rpc("guest_cancel_order", { p_order_id: orderId, p_token_hash: hash });
   return error ? explain(error) : { ok: true };
@@ -139,10 +154,9 @@ export async function cancelGuestOrder(orderId: string, token: string | null | u
 
 export async function decideGuestOrder(
   orderId: string,
-  token: string | null | undefined,
+  hash: string | null,
   decision: unknown,
 ): Promise<GuestActionResult> {
-  const hash = fingerprint(orderId, token);
   if (!hash) return { ok: false, status: 404, message: "We couldn't find that order." };
   if (decision !== "continue" && decision !== "cancel") return { ok: false, status: 400, message: "Please choose to continue or cancel." };
   const { error } = await createAdminClient().rpc("guest_decide_on_unavailable_items", {

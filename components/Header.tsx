@@ -92,14 +92,14 @@ export default function Header({ categoryGroups }: { categoryGroups: CategoryGro
 
           <Logo />
 
-          {/* Icons. Account is a placeholder until sign-in is built; the cart shows its item count. */}
+          {/* Icons: search, account (sign in / my orders), and the cart with its item count. */}
           <div className="flex items-center justify-end gap-1 sm:gap-2">
             <Link href="/search" aria-label="Search" className="p-2 transition-colors hover:text-brand-red">
               <SearchIcon />
             </Link>
-            <span title="Sign in — coming soon" aria-label="Account (coming soon)" className="hidden cursor-not-allowed p-2 opacity-40 sm:block">
+            <Link href="/account" aria-label="My account" className="p-2 transition-colors hover:text-brand-red">
               <UserIcon />
-            </span>
+            </Link>
             <CartLink />
           </div>
         </div>

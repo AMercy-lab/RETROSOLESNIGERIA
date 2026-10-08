@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { submitTransferProof } from "@/lib/orders/bank-transfer";
+import { orderKey } from "@/lib/orders/guest-order";
 
 /*
   POST /api/orders/<id>/transfer-proof  (multipart form: token, file, note)
+  Signed-in customers may leave out the token.
   "I've made the transfer": uploads the receipt. The payment then waits for
   RSN to check the bank account — it is never confirmed automatically.
 */
@@ -19,7 +21,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const note = form.get("note");
   const result = await submitTransferProof(
     id,
-    typeof token === "string" ? token : null,
+    await orderKey(id, typeof token === "string" ? token : null, request),
     file instanceof File ? file : null,
     typeof note === "string" ? note.trim() : "",
   );

@@ -6,9 +6,10 @@ import { useState } from "react";
 /*
   The customer's buttons on their order page. They call the same
   /api/orders/<id>/... addresses the future mobile app will use, sending the
-  private link secret in the request body, then refresh the page.
+  private link secret in the request body (or, signed in, the login cookie),
+  then refresh the page.
 */
-function useGuestAction(orderId: string, token: string) {
+function useGuestAction(orderId: string, token: string | null) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +22,7 @@ function useGuestAction(orderId: string, token: string) {
       const res = await fetch(`/api/orders/${orderId}/${path}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, ...body }),
+        body: JSON.stringify({ ...(token ? { token } : {}), ...body }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) setError(data.error ?? "Something went wrong. Please try again.");
@@ -44,7 +45,7 @@ function ErrorNote({ error }: { error: string | null }) {
 }
 
 // "Some items aren't available": continue without them, or cancel.
-export function DecisionButtons({ orderId, token }: { orderId: string; token: string }) {
+export function DecisionButtons({ orderId, token }: { orderId: string; token: string | null }) {
   const { busy, error, run } = useGuestAction(orderId, token);
   return (
     <div className="flex flex-col gap-3">
@@ -74,7 +75,7 @@ export function DecisionButtons({ orderId, token }: { orderId: string; token: st
 }
 
 // Cancel any time before paying.
-export function CancelOrderButton({ orderId, token }: { orderId: string; token: string }) {
+export function CancelOrderButton({ orderId, token }: { orderId: string; token: string | null }) {
   const { busy, error, run } = useGuestAction(orderId, token);
   return (
     <div className="flex flex-col gap-3">

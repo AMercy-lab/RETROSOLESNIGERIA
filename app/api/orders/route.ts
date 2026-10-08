@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getCustomer } from "@/lib/customer/session";
 import { placeOrder, validatePlaceOrder } from "@/lib/orders/place-order";
 
 /*
@@ -11,6 +12,8 @@ import { placeOrder, validatePlaceOrder } from "@/lib/orders/place-order";
   No prices are accepted: the database takes them from the catalogue.
   Response 201: { orderId, orderNumber, confirmationDueAt, accessToken }
   The accessToken is the guest's private order link secret — shown once.
+  Signed in (login cookie, or "Authorization: Bearer" from the app), the order
+  is also added to the customer's account.
 */
 export async function POST(request: Request) {
   let body: unknown;
@@ -25,7 +28,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: checked.message, field: checked.field }, { status: 400 });
   }
 
-  const result = await placeOrder(checked.input);
+  const customer = await getCustomer(request);
+  const result = await placeOrder(checked.input, customer?.id);
   if (!result.ok) {
     return NextResponse.json({ error: result.message }, { status: result.status });
   }

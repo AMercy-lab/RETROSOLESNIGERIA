@@ -31,7 +31,7 @@ function lagosTime(iso: string) {
   the database. Nothing is paid here: RSN first confirms availability and the
   delivery fee (within 3 hours), then the customer has 1 hour to pay.
 */
-export default function CheckoutView() {
+export default function CheckoutView({ defaultEmail }: { defaultEmail?: string }) {
   const { lines, count, subtotalKobo } = useCart();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<{ message: string; field?: string } | null>(null);
@@ -225,7 +225,7 @@ export default function CheckoutView() {
             </div>
             <div>
               <label htmlFor="email" className={labelClass}>Email</label>
-              <input id="email" name="email" type="email" required autoComplete="email" maxLength={200} className={field} aria-invalid={invalid("email")} />
+              <input id="email" name="email" type="email" required autoComplete="email" maxLength={200} defaultValue={defaultEmail} className={field} aria-invalid={invalid("email")} />
             </div>
           </div>
           <div>
